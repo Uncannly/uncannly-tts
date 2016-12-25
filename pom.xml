@@ -35,11 +35,6 @@
   <version>0.0.1</version>
   <dependencies>
     <dependency>
-      <groupId>com.amazonaws</groupId>
-      <artifactId>aws-java-sdk</artifactId>
-      <version>1.10.15</version>
-    </dependency>
-    <dependency>
       <groupId>com.ivona</groupId>
       <artifactId>ivona-speechcloud-sdk-java</artifactId>
       <version>1.0.0</version>
