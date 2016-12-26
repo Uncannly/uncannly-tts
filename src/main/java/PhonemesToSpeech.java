@@ -38,7 +38,9 @@ public class PhonemesToSpeech {
       Parameters parameters = new Parameters();
       voice.setName("Salli");
       input.setType("application/ssml+xml");
-      input.setData(String.format("<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>\"", req.queryParams("word")));
+      String word = req.queryParams("word");
+      String ignoreAlreadyInDictionary = word.split("\\(")[0];
+      input.setData(String.format("<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>\"", ignoreAlreadyInDictionary));
       parameters.setRate("slow");
       createSpeechRequest.setVoice(voice);
       createSpeechRequest.setInput(input);
