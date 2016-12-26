@@ -11,6 +11,8 @@ import static spark.Spark.*;
 
 public class PhonemesToSpeech {
   public static void main(String[] args) {
+    port(Integer.parseInt(System.getenv("PORT")));
+
   	options("/*", (req, res) -> {
       String accessControlRequestHeaders = req.headers("Access-Control-Request-Headers");
       if (accessControlRequestHeaders != null) {
