@@ -12,7 +12,7 @@ import static spark.Spark.*;
 
 public class PhonemesToSpeech {
   public static void main(String[] args) {
-    port(Integer.parseInt(System.getenv("PORT")));
+    port(Integer.parseInt(System.getenv("PORT") == null ? "4567" : System.getenv("PORT")));
 
   	options("/*", (req, res) -> {
       String accessControlRequestHeaders = req.headers("Access-Control-Request-Headers");
@@ -32,19 +32,26 @@ public class PhonemesToSpeech {
     	IvonaSpeechCloudClient speechCloud = new IvonaSpeechCloudClient(
         new ClasspathPropertiesFileCredentialsProvider("resources/IvonaCredentials.properties"));
       speechCloud.setEndpoint("https://tts.eu-west-1.ivonacloud.com");
+
       CreateSpeechRequest createSpeechRequest = new CreateSpeechRequest();
-      Input input = new Input();
+
       Voice voice = new Voice();
-      Parameters parameters = new Parameters();
       voice.setName("Salli");
-      input.setType("application/ssml+xml");
-      String word = req.queryParams("word");
-      String ignoreAlreadyInDictionary = word.split("\\(")[0];
-      input.setData(String.format("<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>\"", ignoreAlreadyInDictionary));
+
+      Parameters parameters = new Parameters();
       parameters.setRate("slow");
+
+      Input input = new Input();
+      input.setType("application/ssml+xml");
+      String word = req.queryParams("word").split("\\(")[0];
+      input.setData(String.format(
+        "<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>\"", word
+      ));
+
       createSpeechRequest.setVoice(voice);
       createSpeechRequest.setInput(input);
       createSpeechRequest.setParameters(parameters);
+
       InputStream in = null;
       BufferedOutputStream outputStream = null;
       res.raw().setContentType("application/octet-stream");
