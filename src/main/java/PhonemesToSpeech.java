@@ -1,6 +1,7 @@
 import java.io.BufferedOutputStream;
 import java.io.InputStream;
 
+import org.apache.commons.io.IOUtils;
 import com.amazonaws.auth.ClasspathPropertiesFileCredentialsProvider;
 import com.ivona.services.tts.IvonaSpeechCloudClient;
 import com.ivona.services.tts.model.CreateSpeechRequest;
@@ -14,22 +15,33 @@ public class PhonemesToSpeech {
   public static void main(String[] args) {
     port(Integer.parseInt(System.getenv("PORT") == null ? "4567" : System.getenv("PORT")));
 
-  	options("/*", (req, res) -> {
+    exception(Exception.class, (exception, request, response) -> {
+      exception.printStackTrace();
+    });
+
+    options("/*", (req, res) -> {
       String accessControlRequestHeaders = req.headers("Access-Control-Request-Headers");
       if (accessControlRequestHeaders != null) {
         res.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
       }
       String accessControlRequestMethod = req.headers("Access-Control-Request-Method");
       if (accessControlRequestMethod != null) {
-          res.header("Access-Control-Allow-Methods", accessControlRequestMethod);
+        res.header("Access-Control-Allow-Methods", accessControlRequestMethod);
       }
       return "OK";
     });
 
-		before((req, res) -> res.header("Access-Control-Allow-Origin", "*"));
+    before((req, res) -> res.header("Access-Control-Allow-Origin", "*"));
 
     get("/pts", (req, res) -> {
-    	IvonaSpeechCloudClient speechCloud = new IvonaSpeechCloudClient(
+      InputStream authentication = PhonemesToSpeech.class.getResourceAsStream("resources/BasicAuth.properties");
+      String auth = IOUtils.toString(authentication);
+
+      if (req.headers("Authentication") == null || !req.headers("Authentication").equals("Basic " + auth)) {
+        halt(401);
+      }
+
+      IvonaSpeechCloudClient speechCloud = new IvonaSpeechCloudClient(
         new ClasspathPropertiesFileCredentialsProvider("resources/IvonaCredentials.properties"));
       speechCloud.setEndpoint("https://tts.eu-west-1.ivonacloud.com");
 
