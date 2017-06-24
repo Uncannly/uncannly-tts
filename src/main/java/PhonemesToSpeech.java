@@ -1,13 +1,18 @@
 import java.io.BufferedOutputStream;
 import java.io.InputStream;
 
-import com.amazonaws.auth.ClasspathPropertiesFileCredentialsProvider;
-import com.ivona.services.tts.IvonaSpeechCloudClient;
-import com.ivona.services.tts.model.CreateSpeechRequest;
-import com.ivona.services.tts.model.CreateSpeechResult;
-import com.ivona.services.tts.model.Input;
-import com.ivona.services.tts.model.Voice;
-import com.ivona.services.tts.model.Parameters;
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.polly.AmazonPollyClient;
+import com.amazonaws.services.polly.model.DescribeVoicesRequest;
+import com.amazonaws.services.polly.model.DescribeVoicesResult;
+import com.amazonaws.services.polly.model.OutputFormat;
+import com.amazonaws.services.polly.model.SynthesizeSpeechRequest;
+import com.amazonaws.services.polly.model.SynthesizeSpeechResult;
+import com.amazonaws.services.polly.model.Voice;
+
 import static spark.Spark.*;
 
 public class PhonemesToSpeech {
@@ -29,35 +34,33 @@ public class PhonemesToSpeech {
 		before((req, res) -> res.header("Access-Control-Allow-Origin", "*"));
 
     get("/pts", (req, res) -> {
-    	IvonaSpeechCloudClient speechCloud = new IvonaSpeechCloudClient(
-        new ClasspathPropertiesFileCredentialsProvider("resources/IvonaCredentials.properties"));
-      speechCloud.setEndpoint("https://tts.eu-west-1.ivonacloud.com");
+      AmazonPollyClient polly = new AmazonPollyClient(
+        new DefaultAWSCredentialsProviderChain(), 
+        new ClientConfiguration()
+        );
+      polly.setRegion(Region.getRegion(Regions.US_EAST_1));
+      
+      DescribeVoicesRequest describeVoicesRequest = new DescribeVoicesRequest();
+      DescribeVoicesResult describeVoicesResult = polly.describeVoices(describeVoicesRequest);
+      Voice voice = describeVoicesResult.getVoices().get(0);
 
-      CreateSpeechRequest createSpeechRequest = new CreateSpeechRequest();
-
-      Voice voice = new Voice();
-      voice.setName("Salli");
-
-      Parameters parameters = new Parameters();
-      parameters.setRate("slow");
-
-      Input input = new Input();
-      input.setType("application/ssml+xml");
       String word = req.queryParams("word").split("\\(")[0];
-      input.setData(String.format(
-        "<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>\"", word
-      ));
+      String formattedWord = String.format(
+        "<speak><phoneme alphabet=\"ipa\" ph=\"%s\">_</phoneme></speak>", word
+      );
 
-      createSpeechRequest.setVoice(voice);
-      createSpeechRequest.setInput(input);
-      createSpeechRequest.setParameters(parameters);
+      SynthesizeSpeechRequest synthReq = new SynthesizeSpeechRequest()
+        .withTextType("ssml")
+        .withText(formattedWord)
+        .withVoiceId(voice.getId())
+        .withOutputFormat(OutputFormat.Mp3);
+      SynthesizeSpeechResult synthRes = polly.synthesizeSpeech(synthReq);
 
-      InputStream in = null;
+      InputStream in = synthRes.getAudioStream();
+
       BufferedOutputStream outputStream = null;
       res.raw().setContentType("application/octet-stream");
       try {
-        CreateSpeechResult createSpeechResult = speechCloud.createSpeech(createSpeechRequest);
-        in = createSpeechResult.getBody();
         outputStream = new BufferedOutputStream(res.raw().getOutputStream());
         byte[] buffer = new byte[2 * 1024];
         int readBytes;
